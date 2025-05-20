@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超酷炫爱心整蛊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        chaos: '#FF00FF',
+                        madness: '#00FFFF',
+                        clown: '#FFCC00',
+                    },
+                    fontFamily: {
+                        comic: ['"Comic Sans MS"', 'cursive'],
+                        impact: ['Impact', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .jitter {
+                animation: jitter 0.1s infinite;
+            }
+            .rainbow-text {
+                background-image: linear-gradient(90deg, #FF0000, #FF7F00, #FFFF00, #00FF00, #0000FF, #4B0082, #8F00FF);
+                background-clip: text;
+                -webkit-background-clip: text;
+                color: transparent;
+                background-size: 300% 100%;
+                animation: rainbow 2s ease infinite;
+            }
+            .dance {
+                animation: dance 0.3s infinite;
+            }
+            .wave-text span {
+                display: inline-block;
+                animation: wave 1s infinite ease-in-out;
+            }
+        }
+
+        @keyframes jitter {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(5px, 5px) rotate(5deg); }
+            50% { transform: translate(0, 5px) rotate(0deg); }
+            75% { transform: translate(5px, 0) rotate(-5deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes dance {
+            0% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-10px) rotate(5deg); }
+            50% { transform: translateY(0) rotate(0deg); }
+            75% { transform: translateY(10px) rotate(-5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .confetti {
+            position: absolute;
+            top: -10px;
+            pointer-events: none;
+        }
+
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(720deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-black flex items-center justify-center overflow-hidden">
+    <div id="animation-container" class="relative w-full h-full flex items-center justify-center">
+        <div id="p5-container"></div>
+        
+        <div id="text" class="text-[clamp(2rem,8vw,5rem)] font-comic text-center opacity-0 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <span class="rainbow-text jitter">张旭是超级大傻X</span>
+        </div>
+        
+        <!-- 全屏按钮 -->
+        <button id="fullscreen-btn" class="fixed bottom-4 right-4 bg-black/50 text-white p-2 rounded-full opacity-20 hover:opacity-100 transition-opacity z-50">
+            <i class="fa-solid fa-expand"></i>
+        </button>
+    </div>
+
+    <script>
+        // 获取元素
+        const text = document.getElementById('text');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        
+        // 音效控制
+        let soundEnabled = true;
+        let soundPlayed = false;
+        let prankTriggered = false;
+        
+        // 创建整蛊音效
+        const sounds = [
+            'https://assets.mixkit.co/sfx/preview/mixkit-clown-horn-1476.mp3',
+            'https://assets.mixkit.co/sfx/preview/mixkit-evil-laugh-125.mp3',
+            'https://assets.mixkit.co/sfx/preview/mixkit-funny-fart-1985.mp3',
+            'https://assets.mixkit.co/sfx/preview/mixkit-silly-game-show-fail-1048.mp3',
+            'https://assets.mixkit.co/sfx/preview/mixkit-whistle-fail-586.mp3'
+        ];
+        
+        const explosion = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-explosion-impact-1699.mp3');
+        const laughter = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-evil-laugh-125.mp3');
+        
+        // 全屏功能
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+        
+        // 彩色纸屑效果
+        function createConfetti() {
+            for (let i = 0; i < 200; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = `${Math.random() * 100}vw`;
+                confetti.style.width = `${Math.random() * 10 + 5}px`;
+                confetti.style.height = `${Math.random() * 4 + 2}px`;
+                confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 65%)`;
+                confetti.style.animation = `confetti ${Math.random() * 3 + 2}s linear forwards`;
+                document.body.appendChild(confetti);
+                
+                // 自动移除
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+            
+            // 播放随机音效
+            playRandomSound();
+        }
+        
+        // 播放随机音效
+        function playRandomSound() {
+            if (!soundEnabled) return;
+            
+            const randomSound = new Audio(sounds[Math.floor(Math.random() * sounds.length)]);
+            randomSound.volume = 0.7;
+            randomSound.play();
+        }
+        
+        // 添加更多文字
+        function addMoreText() {
+            const insults = [
+                '张旭是大笨蛋',
+                '哈哈哈',
+                '上当了吧',
+                '😜',
+                '🤣',
+                '张旭大傻子',
+                '啦啦啦啦啦啦啦啦',
+                '🌈💩',
+                '🎉🎪',
+                '👹'
+            ];
+            
+            // 随机间隔添加文字
+            const addTextInterval = setInterval(() => {
+                if (Math.random() < 0.7) {
+                    const newText = document.createElement('div');
+                    newText.className = 'absolute rainbow-text jitter dance';
+                    newText.style.fontSize = `${Math.random() * 3 + 2}rem`;
+                    newText.style.top = `${Math.random() * 80 + 10}vh`;
+                    newText.style.left = `${Math.random() * 80 + 10}vw`;
+                    newText.style.transform = `rotate(${Math.random() * 360}deg)`;
+                    newText.style.zIndex = '10';
+                    newText.textContent = insults[Math.floor(Math.random() * insults.length)];
+                    document.body.appendChild(newText);
+                    
+                    // 随机播放音效
+                    if (Math.random() < 0.3) {
+                        playRandomSound();
+                    }
+                }
+            }, 500);
+            
+            // 一段时间后停止添加
+            setTimeout(() => {
+                clearInterval(addTextInterval);
+            }, 10000);
+        }
+        
+        // 创建p5.js动画
+        new p5((sketch) => {
+            let heartSize;
+            let rotation = 0;
+            let phase = 0; // 0: 心跳, 1: 爆炸, 2: 消失
+            let particles = [];
+            let particleCount = 100;
+            let heartColor;
+            let heartVisible = true;
+            let explosionTime = 0;
+            
+            sketch.setup = () => {
+                const container = document.getElementById('p5-container');
+                const canvas = sketch.createCanvas(container.offsetWidth, container.offsetHeight);
+                canvas.parent(container);
+                heartSize = Math.min(sketch.width, sketch.height) * 0.4;
+                heartColor = sketch.color(255, 105, 180);
+                
+                // 延迟触发整蛊
+                setTimeout(() => {
+                    phase = 1;
+                    explosionTime = sketch.millis();
+                    
+                    // 播放爆炸音效
+                    if (soundEnabled && !soundPlayed) {
+                        explosion.play();
+                        soundPlayed = true;
+                    }
+                    
+                    // 创建爆炸粒子
+                    for (let i = 0; i < particleCount; i++) {
+                        const angle = sketch.random(sketch.TWO_PI);
+                        const speed = sketch.random(3, 8);
+                        const size = sketch.random(5, 15);
+                        const color = sketch.color(
+                            sketch.random(150, 255),
+                            sketch.random(100, 200),
+                            sketch.random(150, 255)
+                        );
+                        
+                        particles.push({
+                            x: sketch.width / 2,
+                            y: sketch.height / 2,
+                            vx: sketch.cos(angle) * speed,
+                            vy: sketch.sin(angle) * speed,
+                            size: size,
+                            color: color,
+                            alpha: 255,
+                            gravity: 0.1
+                        });
+                    }
+                    
+                    // 一段时间后显示文字
+                    setTimeout(() => {
+                        heartVisible = false;
+                        text.style.display = 'block';
+                        text.style.opacity = '1';
+                        
+                        // 应用波浪效果到文字
+                        text.innerHTML = text.textContent
+                            .split('')
+                            .map((char, i) => `<span style="animation-delay: ${i * 0.1}s">${char}</span>`)
+                            .join('');
+                        text.classList.add('wave-text');
+                        
+                        // 文字出现后开始跳舞
+                        setTimeout(() => {
+                            text.classList.add('dance');
+                            
+                            // 播放笑声
+                            if (soundEnabled) {
+                                setTimeout(() => {
+                                    laughter.play();
+                                }, 500);
+                            }
+                            
+                            // 更疯狂的整蛊 - 改变背景颜色
+                            setInterval(() => {
+                                document.body.style.backgroundColor = `rgb(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255})`;
+                            }, 300);
+                            
+                            // 随机改变文字大小
+                            setInterval(() => {
+                                const size = Math.random() * 10 + 2;
+                                text.style.fontSize = `clamp(${size}rem, ${size+5}vw, ${size+8}rem)`;
+                            }, 500);
+                            
+                            // 随机添加更多文字
+                            setTimeout(addMoreText, 2000);
+                        }, 1000);
+                    }, 1000);
+                }, 3000);
+            };
+            
+            sketch.windowResized = () => {
+                sketch.resizeCanvas(sketch.windowWidth, sketch.windowHeight);
+                heartSize = Math.min(sketch.width, sketch.height) * 0.4;
+            };
+            
+            sketch.draw = () => {
+                sketch.background(0);
+                
+                if (heartVisible) {
+                    // 绘制爱心
+                    sketch.push();
+                    sketch.translate(sketch.width / 2, sketch.height / 2);
+                    
+                    if (phase === 0) {
+                        // 心跳动画
+                        const pulse = sketch.sin(sketch.frameCount * 0.1) * 0.1 + 1;
+                        sketch.scale(pulse);
+                        rotation += 0.01;
+                        sketch.rotate(rotation);
+                        
+                        // 颜色变化
+                        const hue = (sketch.frameCount * 2) % 360;
+                        heartColor = sketch.color(`hsla(${hue}, 100%, 70%, 1)`);
+                    } else if (phase === 1) {
+                        // 爆炸动画
+                        const explodeTime = (sketch.millis() - explosionTime) / 1000;
+                        sketch.scale(1 + explodeTime * 0.5);
+                        rotation += 0.1;
+                        sketch.rotate(rotation);
+                        
+                        // 颜色变化
+                        const hue = (sketch.frameCount * 5) % 360;
+                        heartColor = sketch.color(`hsla(${hue}, 100%, 70%, ${1 - explodeTime})`);
+                    }
+                    
+                    sketch.fill(heartColor);
+                    sketch.noStroke();
+                    
+                    // 绘制爱心形状
+                    sketch.beginShape();
+                    for (let a = 0; a < sketch.TWO_PI; a += 0.01) {
+                        const r = 16 * sketch.pow(sketch.sin(a), 3);
+                        const x = r * sketch.cos(a) * heartSize / 32;
+                        const y = -r * sketch.sin(a) * heartSize / 32;
+                        sketch.vertex(x, y);
+                    }
+                    sketch.endShape();
+                    sketch.pop();
+                }
+                
+                // 绘制粒子
+                if (phase === 1) {
+                    for (let i = 0; i < particles.length; i++) {
+                        const p = particles[i];
+                        
+                        // 更新粒子位置
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += p.gravity;
+                        p.alpha -= 5;
+                        
+                        // 绘制粒子
+                        sketch.push();
+                        sketch.fill(p.color);
+                        sketch.noStroke();
+                        sketch.ellipse(p.x, p.y, p.size);
+                        sketch.pop();
+                    }
+                }
+            };
+            
+            // 鼠标交互 - 随机触发整蛊
+            sketch.mouseMoved = () => {
+                if (Math.random() < 0.005 && !prankTriggered && phase === 0) {
+                    playRandomSound();
+                    
+                    // 随机改变爱心颜色
+                    heartColor = sketch.color(
+                        sketch.random(150, 255),
+                        sketch.random(100, 200),
+                        sketch.random(150, 255)
+                    );
+                    
+                    // 随机调整爱心大小
+                    heartSize = Math.min(sketch.width, sketch.height) * (0.3 + Math.random() * 0.2);
+                }
+            };
+            
+            // 点击交互 - 随机触发整蛊
+            sketch.mouseClicked = () => {
+                if (Math.random() < 0.2 && !prankTriggered && phase === 0) {
+                    playRandomSound();
+                    
+                    // 随机改变爱心颜色
+                    heartColor = sketch.color(
+                        sketch.random(150, 255),
+                        sketch.random(100, 200),
+                        sketch.random(150, 255)
+                    );
+                    
+                    // 随机调整爱心大小
+                    heartSize = Math.min(sketch.width, sketch.height) * (0.3 + Math.random() * 0.2);
+                }
+            };
+            
+            // 键盘交互 - 空格键触发彩带动画
+            sketch.keyPressed = () => {
+                if (sketch.key === ' ') {
+                    createConfetti();
+                }
+            };
+        });
+    </script>
+</body>
+</html>
+    
